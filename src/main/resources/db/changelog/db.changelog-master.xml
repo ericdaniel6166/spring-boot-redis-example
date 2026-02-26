@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.31.xsd">
+
+    <changeSet id="20260226-001" author="gemini">
+        <createTable tableName="user_scores">
+            <column name="user_id" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="board_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_score" type="DOUBLE PRECISION">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <addPrimaryKey columnNames="user_id, board_type, version" constraintName="pk_user_scores" tableName="user_scores"/>
+    </changeSet>
+
+    <changeSet id="20260226-002" author="gemini">
+        <createIndex indexName="idx_leaderboard_lookup" tableName="user_scores">
+            <column name="board_type"/>
+            <column name="version"/>
+            <column name="total_score" descending="true"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

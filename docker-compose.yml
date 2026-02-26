@@ -1,0 +1,50 @@
+services:
+  # PostgreSQL 18
+  postgres-db:
+    image: postgres:18-alpine
+    container_name: leaderboard-postgres
+    environment:
+      POSTGRES_DB: leaderboard_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    networks:
+      - leaderboard-network
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d leaderboard_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cluster (3 Masters, 3 Replicas)
+  redis-cluster:
+    image: grokzen/redis-cluster:7.2.5
+    container_name: leaderboard-redis-cluster
+    environment:
+      - IP=0.0.0.0
+      - INITIAL_PORT=6379
+      - MASTERS=3
+      - SLAVES_PER_MASTER=1
+      - REDIS_PASSWORD=password
+      # Locale Fixes
+      - LC_ALL=C
+      - LANG=C
+    networks:
+      - leaderboard-network
+    ports:
+      - "6379:6379"
+      - "6380:6380"
+      - "6381:6381"
+      - "6382:6382"
+      - "6383:6383"
+      - "6384:6384"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6379", "-a", "password", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  leaderboard-network:
+    driver: bridge

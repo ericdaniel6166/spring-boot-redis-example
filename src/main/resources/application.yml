@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: spring-boot-redis-example
+
+  # Java 21: Enable Virtual Threads for high-throughput I/O
+  threads:
+    virtual:
+      enabled: true
+
+  # Database Configuration (PostgreSQL)
+  datasource:
+    url: jdbc:postgresql://0.0.0.0:5432/leaderboard_db
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: LeaderboardHikariPool
+      maximum-pool-size: 50
+      minimum-idle: 10
+      idle-timeout: 30000
+      connection-timeout: 20000
+      max-lifetime: 1800000
+
+  # Redis Configuration (Cluster Mode)
+  data:
+    redis:
+      username: default
+      password: password
+      cluster:
+        # Provide at least one or two nodes; Lettuce will discover the rest
+        nodes:
+          - localhost:6379
+          - localhost:6380
+          - localhost:6381
+        max-redirects: 3
+      lettuce:
+        cluster:
+          refresh:
+            adaptive: true # Refresh cluster topology on node failures/failover
+            period: 60s    # Periodic background refresh
+#            dynamic-refresh-sources: false # Forces use of the provided nodes list, If getting a "Connection Timed Out" during Redis operations
+        pool:
+          max-active: 100
+          max-idle: 50
+          min-idle: 10
+          max-wait: 1000ms
+
+  # Database Migration (Liquibase)
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    enabled: true
+#    parameters:
+#      liquibase.secureParsing: "false"
+
+# Server Port
+server:
+  port: 8080
+
+# Logging Levels for Debugging
+logging:
+  level:
+    root: INFO
+    com.eric6166: DEBUG
+    org.springframework.data.redis: INFO
+    org.apache.http: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+    org.springframework.kafka: WARN
+    org.apache.kafka: WARN
+    org.springframework.jdbc.core.JdbcTemplate: DEBUG
+    org.hibernate.sql: DEBUG # Optional: To see SQL queries if using JPA elsewhere
+    org.springframework.jdbc.core.StatementCreatorUtils: TRACE # log input parameter
+  pattern:
+    level: "%5p[${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
