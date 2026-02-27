@@ -37,7 +37,7 @@ public class RankingService {
      * Resolves the Redis key using {} Hash Tags for Cluster sharding.
      */
     public String resolveKey(LeaderboardType type, int version) {
-        return "{" + type.toSlug() + "}:v" + version;
+        return String.format("{%s}:v%d", type.toSlug(), version);
     }
 
     /**
