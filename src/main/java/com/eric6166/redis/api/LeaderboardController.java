@@ -39,7 +39,7 @@ public class LeaderboardController {
     public List<UserProfileResponse> search(
             @PathVariable LeaderboardType type,
             @RequestParam String userId,
-            @Min(1) @Max(20) @RequestParam(defaultValue = "5") int radius) {
+            @Min(0) @Max(20) @RequestParam(defaultValue = "5") int radius) {
         return rankingService.getNeighborhood(type, 1, userId, radius);
     }
 
