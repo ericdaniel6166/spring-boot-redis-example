@@ -22,9 +22,9 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class RankingService {
 
-    private static final String PROFILE_HASH_KEY = "user_profiles";
     public static final String NOTIFY_CHANNEL = "lb_notifications";
     public static final String TEMP_SUFFIX = "_temp";
+    private static final String PROFILE_HASH_KEY = "user_profiles";
     private final StringRedisTemplate redisTemplate;
     private final JdbcTemplate jdbcTemplate;
     // L1 Cache: Absorbs spike, Prevents "Cache Stampede" by caching Top 10 for 10 seconds (Page 0)

@@ -30,24 +30,19 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class RankingServiceTest {
 
-    @Mock
-    private StringRedisTemplate redisTemplate;
-
-    @Mock
-    private JdbcTemplate jdbcTemplate;
-
-    @Mock
-    private ZSetOperations<String, String> zSetOperations;
-
-    @Mock
-    private HashOperations<String, Object, Object> hashOperations;
-
-    @InjectMocks
-    private RankingService rankingService;
-
     private static final String USER_ID = "user-123";
     private static final int VERSION = 1;
     private static final String KEY_ALL_TIME_VERSION = "{" + LeaderboardType.ALL_TIME.toSlug() + "}:v" + VERSION;
+    @Mock
+    private StringRedisTemplate redisTemplate;
+    @Mock
+    private JdbcTemplate jdbcTemplate;
+    @Mock
+    private ZSetOperations<String, String> zSetOperations;
+    @Mock
+    private HashOperations<String, Object, Object> hashOperations;
+    @InjectMocks
+    private RankingService rankingService;
 
     @BeforeEach
     void setUp() {
@@ -112,7 +107,7 @@ class RankingServiceTest {
     @Test
     @DisplayName("RehydrateAllProfiles should handle multiple batches")
     void rehydrateAllProfiles_Batching() {
-    // 1. Mock the ResultSet to simulate 1500 records
+        // 1. Mock the ResultSet to simulate 1500 records
         doAnswer(invocation -> {
             RowCallbackHandler handler = invocation.getArgument(1);
             ResultSet rs = mock(ResultSet.class);
@@ -120,6 +115,7 @@ class RankingServiceTest {
             // Simulate 1500 rows
             when(rs.next()).thenReturn(true).thenAnswer(new Answer<Boolean>() {
                 private int count = 0;
+
                 public Boolean answer(InvocationOnMock inv) {
                     return ++count < 1500;
                 }
@@ -130,19 +126,19 @@ class RankingServiceTest {
             return null;
         }).when(jdbcTemplate).query(eq("SELECT user_id FROM user_profiles"), any(RowCallbackHandler.class));
 
-    // 2. Mock the second query (inside syncProfilesToRedis) to return an empty list
-    // so the loop continues without crashing on nulls
-    lenient().when(jdbcTemplate.queryForList(anyString(), any(Object[].class)))
-            .thenReturn(Collections.emptyList());
+        // 2. Mock the second query (inside syncProfilesToRedis) to return an empty list
+        // so the loop continues without crashing on nulls
+        lenient().when(jdbcTemplate.queryForList(anyString(), any(Object[].class)))
+                .thenReturn(Collections.emptyList());
 
-    // 3. Execute
+        // 3. Execute
         rankingService.rehydrateAllProfiles();
 
-    // 4. Verify:
-    // Batch 1: 1000 IDs
-    // Batch 2: 500 IDs
-    // Total: 2 calls to queryForList (which is inside syncProfilesToRedis)
-    verify(jdbcTemplate, times(2)).queryForList(contains("WHERE user_id IN"), any(Object[].class));
+        // 4. Verify:
+        // Batch 1: 1000 IDs
+        // Batch 2: 500 IDs
+        // Total: 2 calls to queryForList (which is inside syncProfilesToRedis)
+        verify(jdbcTemplate, times(2)).queryForList(contains("WHERE user_id IN"), any(Object[].class));
     }
 
     @Test
