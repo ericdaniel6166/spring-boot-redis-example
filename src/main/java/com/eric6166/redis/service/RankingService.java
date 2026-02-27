@@ -24,6 +24,9 @@ public class RankingService {
 
     public static final String NOTIFY_CHANNEL = "lb_notifications";
     public static final String TEMP_SUFFIX = "_temp";
+    public static final String PROFILE_HASH_KEY_AVATAR = "avatar";
+    public static final String PROFILE_HASH_KEY_TEAM = "team";
+    public static final int BATCH_SIZE = 1000;
     private static final String PROFILE_HASH_KEY = "user_profiles";
     private final StringRedisTemplate redisTemplate;
     private final JdbcTemplate jdbcTemplate;
@@ -134,8 +137,8 @@ public class RankingService {
             @SuppressWarnings("unchecked")
             Map<String, String> profile = (Map<String, String>) profiles.get(i++);
 
-            String avatar = (profile != null && profile.containsKey("avatar")) ? profile.get("avatar") : UserProfileResponse.DEFAULT_AVATAR_URL;
-            String team = (profile != null && profile.containsKey("team")) ? profile.get("team") : UserProfileResponse.DEFAULT_TEAM_ID;
+            String avatar = (profile != null && profile.containsKey(PROFILE_HASH_KEY_AVATAR)) ? profile.get(PROFILE_HASH_KEY_AVATAR) : UserProfileResponse.DEFAULT_AVATAR_URL;
+            String team = (profile != null && profile.containsKey(PROFILE_HASH_KEY_TEAM)) ? profile.get(PROFILE_HASH_KEY_TEAM) : UserProfileResponse.DEFAULT_TEAM_ID;
 
             result.add(new UserProfileResponse(tuple.getValue(), tuple.getScore(), currentRank++, avatar, team));
         }
@@ -159,7 +162,7 @@ public class RankingService {
                 DO UPDATE SET total_score = EXCLUDED.total_score, last_updated = CURRENT_TIMESTAMP
                 """;
 
-        jdbcTemplate.batchUpdate(sql, scores, 1000, (ps, tuple) -> {
+        jdbcTemplate.batchUpdate(sql, scores, BATCH_SIZE, (ps, tuple) -> {
             ps.setString(1, tuple.getValue());
             ps.setString(2, type.name());
             ps.setDouble(3, tuple.getScore());
@@ -201,8 +204,8 @@ public class RankingService {
             String redisKey = PROFILE_HASH_KEY + ":" + userId;
 
             Map<String, String> hashData = new HashMap<>();
-            hashData.put("avatar", (String) profile.get("avatar_url"));
-            hashData.put("team", (String) profile.get("team_id"));
+            hashData.put(PROFILE_HASH_KEY_AVATAR, (String) profile.get("avatar_url"));
+            hashData.put(PROFILE_HASH_KEY_TEAM, (String) profile.get("team_id"));
 
             redisTemplate.opsForHash().putAll(redisKey, hashData);
             redisTemplate.expire(redisKey, Duration.ofDays(7));
@@ -219,7 +222,7 @@ public class RankingService {
             List<String> batch = new ArrayList<>();
             do {
                 batch.add(rs.getString("user_id"));
-                if (batch.size() >= 1000) {
+                if (batch.size() >= BATCH_SIZE) {
                     syncProfilesToRedis(batch);
                     batch.clear();
                 }

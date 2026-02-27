@@ -4,6 +4,7 @@ import com.eric6166.redis.dto.LeaderboardType;
 import com.eric6166.redis.dto.UpdateProfileRequest;
 import com.eric6166.redis.dto.UpdateScoreRequest;
 import com.eric6166.redis.dto.UserProfileResponse;
+import org.apache.commons.lang3.RandomUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,8 +31,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class RankingServiceTest {
 
-    private static final String USER_ID = "user-123";
-    private static final int VERSION = 1;
+    private static final String USER_ID = UUID.randomUUID().toString();
+    private static final int VERSION = RandomUtils.nextInt(1, 10);
     private static final String KEY_ALL_TIME_VERSION = "{" + LeaderboardType.ALL_TIME.toSlug() + "}:v" + VERSION;
     @Mock
     private StringRedisTemplate redisTemplate;
@@ -59,7 +60,7 @@ class RankingServiceTest {
         Set<ZSetOperations.TypedTuple<String>> range = new LinkedHashSet<>(List.of(tuple));
         when(zSetOperations.reverseRangeWithScores(anyString(), eq(0L), eq(9L))).thenReturn(range);
 
-        Map<String, String> profileData = Map.of("avatar", "pic.png", "team", "alpha");
+        Map<String, String> profileData = Map.of(RankingService.PROFILE_HASH_KEY_AVATAR, "pic.png", RankingService.PROFILE_HASH_KEY_TEAM, "alpha");
         when(redisTemplate.executePipelined(any(RedisCallback.class))).thenReturn(List.of(profileData));
 
         // Call 1: Misses L1, calls Redis
@@ -75,12 +76,14 @@ class RankingServiceTest {
     @Test
     @DisplayName("GetLeaderboard should bypass L1 for pages > 0")
     void getLeaderboard_BypassL1ForDeepPages() {
-        when(zSetOperations.reverseRangeWithScores(anyString(), eq(10L), eq(19L))).thenReturn(Collections.emptySet());
+        long start = 10L;
+        long end = 19L;
+        when(zSetOperations.reverseRangeWithScores(anyString(), eq(start), eq(end))).thenReturn(Collections.emptySet());
 
         rankingService.getLeaderboard(LeaderboardType.ALL_TIME, VERSION, 1, 10);
 
         // Should not interact with Caffeine cache for page 1
-        verify(zSetOperations).reverseRangeWithScores(anyString(), eq(10L), eq(19L));
+        verify(zSetOperations).reverseRangeWithScores(anyString(), eq(start), eq(end));
     }
 
     @Test
@@ -91,7 +94,7 @@ class RankingServiceTest {
 
         rankingService.syncToDb(LeaderboardType.ALL_TIME, VERSION);
 
-        verify(jdbcTemplate).batchUpdate(anyString(), any(Set.class), eq(1000), any());
+        verify(jdbcTemplate).batchUpdate(anyString(), any(Set.class), eq(RankingService.BATCH_SIZE), any());
     }
 
     @Test
@@ -120,6 +123,7 @@ class RankingServiceTest {
                     return ++count < 1500;
                 }
             });
+
             when(rs.getString("user_id")).thenReturn("user-id");
 
             handler.processRow(rs);
@@ -206,7 +210,7 @@ class RankingServiceTest {
         when(zSetOperations.reverseRangeWithScores(anyString(), eq(0L), eq(9L))).thenReturn(range);
 
         // Mock Pipeline execution for profile hydration
-        Map<String, String> profileData = Map.of("avatar", "pic.png", "team", "alpha");
+        Map<String, String> profileData = Map.of(RankingService.PROFILE_HASH_KEY_AVATAR, "pic.png", RankingService.PROFILE_HASH_KEY_TEAM, "alpha");
         when(redisTemplate.executePipelined(any(RedisCallback.class))).thenReturn(List.of(profileData));
 
         List<UserProfileResponse> result = rankingService.getLeaderboard(LeaderboardType.ALL_TIME, VERSION, 0, 10);
