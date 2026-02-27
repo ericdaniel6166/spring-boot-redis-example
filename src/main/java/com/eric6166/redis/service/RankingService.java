@@ -31,10 +31,7 @@ public class RankingService {
     private final StringRedisTemplate redisTemplate;
     private final JdbcTemplate jdbcTemplate;
     // L1 Cache: Absorbs spike, Prevents "Cache Stampede" by caching Top 10 for 10 seconds (Page 0)
-    private final Cache<String, List<UserProfileResponse>> l1Cache = Caffeine.newBuilder()
-            .maximumSize(500)
-            .expireAfterWrite(10, TimeUnit.SECONDS)
-            .build();
+    private final Cache<String, List<UserProfileResponse>> l1Cache = Caffeine.newBuilder().maximumSize(500).expireAfterWrite(10, TimeUnit.SECONDS).build();
 
     /**
      * Resolves the Redis key using {} Hash Tags for Cluster sharding.
@@ -134,8 +131,7 @@ public class RankingService {
         int i = 0;
         long currentRank = start + 1;
         for (ZSetOperations.TypedTuple<String> tuple : range) {
-            @SuppressWarnings("unchecked")
-            Map<String, String> profile = (Map<String, String>) profiles.get(i++);
+            @SuppressWarnings("unchecked") Map<String, String> profile = (Map<String, String>) profiles.get(i++);
 
             String avatar = (profile != null && profile.containsKey(PROFILE_HASH_KEY_AVATAR)) ? profile.get(PROFILE_HASH_KEY_AVATAR) : UserProfileResponse.DEFAULT_AVATAR_URL;
             String team = (profile != null && profile.containsKey(PROFILE_HASH_KEY_TEAM)) ? profile.get(PROFILE_HASH_KEY_TEAM) : UserProfileResponse.DEFAULT_TEAM_ID;
@@ -179,10 +175,9 @@ public class RankingService {
         String tempKey = key + TEMP_SUFFIX;
         redisTemplate.delete(tempKey);
 
-        jdbcTemplate.query("SELECT user_id, total_score FROM user_scores WHERE board_type = ? AND version = ?",
-                (rs) -> {
-                    redisTemplate.opsForZSet().add(tempKey, rs.getString("user_id"), rs.getDouble("total_score"));
-                }, type.name(), version);
+        jdbcTemplate.query("SELECT user_id, total_score FROM user_scores WHERE board_type = ? AND version = ?", (rs) -> {
+            redisTemplate.opsForZSet().add(tempKey, rs.getString("user_id"), rs.getDouble("total_score"));
+        }, type.name(), version);
 
         redisTemplate.rename(tempKey, key);
     }
@@ -194,8 +189,7 @@ public class RankingService {
     public void syncProfilesToRedis(List<String> userIds) {
         if (userIds.isEmpty()) return;
 
-        String sql = "SELECT user_id, avatar_url, team_id FROM user_profiles WHERE user_id IN (" +
-                String.join(",", Collections.nCopies(userIds.size(), "?")) + ")";
+        String sql = "SELECT user_id, avatar_url, team_id FROM user_profiles WHERE user_id IN (" + String.join(",", Collections.nCopies(userIds.size(), "?")) + ")";
 
         List<Map<String, Object>> dbProfiles = jdbcTemplate.queryForList(sql, userIds.toArray());
 
@@ -235,7 +229,7 @@ public class RankingService {
         Set<String> victim = redisTemplate.opsForZSet().reverseRange(key, threshold, threshold);
         if (victim != null && !victim.isEmpty()) {
             String victimId = victim.iterator().next();
-            DethroneEvent message = new DethroneEvent(victimId, type, (long) threshold + 1, "Dethroned!");
+            DethroneEvent message = new DethroneEvent(victimId, type, (long) threshold + 1, DethroneEvent.DEFAULT_MESSAGE);
             log.debug(message.toString());
             redisTemplate.convertAndSend(NOTIFY_CHANNEL, message.toString());
         }

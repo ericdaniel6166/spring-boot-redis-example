@@ -11,4 +11,5 @@ public record DethroneEvent(
         Long newRank,
         String message
 ) implements Serializable {
+    public static final String DEFAULT_MESSAGE = "Dethroned!";
 }
