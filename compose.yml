@@ -20,12 +20,22 @@ services:
   redis-node-1: &redis-node
     image: redis:7.2-alpine
     container_name: redis-node-1
-    command: [ "redis-server", "--cluster-enabled", "yes", "--cluster-config-file", "nodes.conf", "--cluster-node-timeout", "5000", "--appendonly", "yes", "--requirepass", "password", "--masterauth", "password" ]
+    command: >
+      redis-server 
+      --cluster-enabled yes 
+      --cluster-config-file nodes.conf 
+      --cluster-node-timeout 5000 
+      --appendonly yes 
+      --requirepass password 
+      --masterauth password
+      --cluster-preferred-endpoint-type hostname
     networks:
       - docker-network
     healthcheck:
       test: [ "CMD", "redis-cli", "-a", "password", "ping" ]
       interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis-node-2:
     <<: *redis-node
@@ -43,7 +53,7 @@ services:
     <<: *redis-node
     container_name: redis-node-6
 
-  # Cluster Creator: Runs once to join the nodes together
+  # Cluster Creator: Joins nodes into a 3-master, 3-replica topology
   redis-cluster-creator:
     image: redis:7.2-alpine
     container_name: redis-cluster-creator
@@ -64,6 +74,7 @@ services:
 
   spring-boot-app:
     build:
+      context: .
       dockerfile: Dockerfile
     container_name: spring-boot-app
     networks:

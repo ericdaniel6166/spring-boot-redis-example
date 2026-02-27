@@ -23,7 +23,8 @@ import java.util.concurrent.TimeUnit;
 public class RankingService {
 
     private static final String PROFILE_HASH_KEY = "user_profiles";
-    private static final String NOTIFY_CHANNEL = "lb_notifications";
+    public static final String NOTIFY_CHANNEL = "lb_notifications";
+    public static final String TEMP_SUFFIX = "_temp";
     private final StringRedisTemplate redisTemplate;
     private final JdbcTemplate jdbcTemplate;
     // L1 Cache: Absorbs spike, Prevents "Cache Stampede" by caching Top 10 for 10 seconds (Page 0)
@@ -133,8 +134,8 @@ public class RankingService {
             @SuppressWarnings("unchecked")
             Map<String, String> profile = (Map<String, String>) profiles.get(i++);
 
-            String avatar = (profile != null && profile.containsKey("avatar")) ? profile.get("avatar") : "default.png";
-            String team = (profile != null && profile.containsKey("team")) ? profile.get("team") : "none";
+            String avatar = (profile != null && profile.containsKey("avatar")) ? profile.get("avatar") : UserProfileResponse.DEFAULT_AVATAR_URL;
+            String team = (profile != null && profile.containsKey("team")) ? profile.get("team") : UserProfileResponse.DEFAULT_TEAM_ID;
 
             result.add(new UserProfileResponse(tuple.getValue(), tuple.getScore(), currentRank++, avatar, team));
         }
@@ -172,7 +173,7 @@ public class RankingService {
      */
     public void rehydrateFromDb(LeaderboardType type, int version) {
         String key = resolveKey(type, version);
-        String tempKey = key + "_temp";
+        String tempKey = key + TEMP_SUFFIX;
         redisTemplate.delete(tempKey);
 
         jdbcTemplate.query("SELECT user_id, total_score FROM user_scores WHERE board_type = ? AND version = ?",

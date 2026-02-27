@@ -12,5 +12,7 @@ public record UserProfileResponse(
         String avatarUrl,
         String teamId
 ) implements Serializable {
+    public static final String DEFAULT_AVATAR_URL = "default.png";
+    public static final String DEFAULT_TEAM_ID = "none";
 }
 
