@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.31.xsd">
 
@@ -22,7 +22,8 @@
             <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP"/>
         </createTable>
 
-        <addPrimaryKey columnNames="user_id, board_type, version" constraintName="pk_user_scores" tableName="user_scores"/>
+        <addPrimaryKey columnNames="user_id, board_type, version" constraintName="pk_user_scores"
+                       tableName="user_scores"/>
     </changeSet>
 
     <changeSet id="20260226-002" author="gemini">
@@ -31,6 +32,53 @@
             <column name="version"/>
             <column name="total_score" descending="true"/>
         </createIndex>
+    </changeSet>
+
+    <changeSet id="20260226-003-populate" author="gemini">
+        <comment>Populating 100 rows of random leaderboard data</comment>
+        <sql>
+            INSERT INTO user_scores (user_id, board_type, version, total_score, last_updated)
+            SELECT gen_random_uuid()::text, (ARRAY['ALL_TIME', 'WEEKLY', 'DAILY'])[floor(random() * 3 + 1)],
+                1,
+                floor(random() * 10000 + 1),
+                NOW() - (random() * (interval '30 days'))
+            FROM generate_series(1, 100);
+        </sql>
+    </changeSet>
+
+    <changeSet id="20260226-004-profiles" author="gemini">
+        <createTable tableName="user_profiles">
+            <column name="user_id" type="VARCHAR(50)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="avatar_url" type="VARCHAR(255)" defaultValue="default.png"/>
+            <column name="team_id" type="VARCHAR(50)" defaultValue="none"/>
+            <column name="updated_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <sql>
+            INSERT INTO user_profiles (user_id, avatar_url, team_id)
+            SELECT DISTINCT user_id, 'avatar_' || floor(random() * 10) || '.png', 'team_' || floor(random() * 5)
+            FROM user_scores ON CONFLICT (user_id) DO NOTHING;
+        </sql>
+    </changeSet>
+
+    <changeSet id="20260227-005-shedlock" author="gemini">
+        <comment>Table for distributed locking (ShedLock)</comment>
+        <createTable tableName="shedlock">
+            <column name="name" type="VARCHAR(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="lock_until" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+            <column name="locked_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+            <column name="locked_by" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
     </changeSet>
 
 </databaseChangeLog>

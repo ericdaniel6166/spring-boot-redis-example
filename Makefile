@@ -1,15 +1,26 @@
-.PHONY: up down
+.PHONY: up down up-local down-local
 
 up:
-	docker compose -f docker-compose.yml up -d
+	docker compose -f compose.yml up -d
+
+up-local:
+	docker compose -f compose.local.yml up -d
 
 down:
-	docker compose -f docker-compose.yml down -v
+	docker compose -f compose.yml down -v
+
+down-local:
+	docker compose -f compose.local.yml down -v
 
 down-redis:
-	docker container stop leaderboard-redis-cluster; \
-    docker container rm -f -v leaderboard-redis-cluster
+	docker container stop redis-cluster; \
+    docker container rm -f -v redis-cluster
 
 down-postgres:
-	docker container stop leaderboard-postgres; \
-    docker container rm -f -v leaderboard-postgres
+	docker container stop postgres-db; \
+    docker container rm -f -v postgres-db
+
+down-app:
+	docker container stop spring-boot-app; \
+    docker container rm -f -v spring-boot-app
+

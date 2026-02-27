@@ -1,0 +1,7 @@
+spring:
+  data:
+    redis:
+      lettuce:
+        cluster:
+          refresh:
+            dynamic-refresh-sources: false # Forces use of the provided nodes list, If getting a "Connection Timed Out" during Redis operations

@@ -1,0 +1,91 @@
+services:
+  postgres-db:
+    image: postgres:18-alpine
+    container_name: postgres-db
+    environment:
+      POSTGRES_DB: postgres_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    networks:
+      - docker-network
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis Nodes (6 individual containers)
+  redis-node-1: &redis-node
+    image: redis:7.2-alpine
+    container_name: redis-node-1
+    command: [ "redis-server", "--cluster-enabled", "yes", "--cluster-config-file", "nodes.conf", "--cluster-node-timeout", "5000", "--appendonly", "yes", "--requirepass", "password", "--masterauth", "password" ]
+    networks:
+      - docker-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "password", "ping" ]
+      interval: 5s
+
+  redis-node-2:
+    <<: *redis-node
+    container_name: redis-node-2
+  redis-node-3:
+    <<: *redis-node
+    container_name: redis-node-3
+  redis-node-4:
+    <<: *redis-node
+    container_name: redis-node-4
+  redis-node-5:
+    <<: *redis-node
+    container_name: redis-node-5
+  redis-node-6:
+    <<: *redis-node
+    container_name: redis-node-6
+
+  # Cluster Creator: Runs once to join the nodes together
+  redis-cluster-creator:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-creator
+    networks:
+      - docker-network
+    depends_on:
+      redis-node-1: { condition: service_healthy }
+      redis-node-2: { condition: service_healthy }
+      redis-node-3: { condition: service_healthy }
+      redis-node-4: { condition: service_healthy }
+      redis-node-5: { condition: service_healthy }
+      redis-node-6: { condition: service_healthy }
+    command: >
+      sh -c "echo 'yes' | redis-cli -a password --cluster create 
+      redis-node-1:6379 redis-node-2:6379 redis-node-3:6379 
+      redis-node-4:6379 redis-node-5:6379 redis-node-6:6379 
+      --cluster-replicas 1"
+
+  spring-boot-app:
+    build:
+      dockerfile: Dockerfile
+    container_name: spring-boot-app
+    networks:
+      - docker-network
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+      - DB_NAME=postgres_db
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_USER=default
+      - REDIS_PASSWORD=password
+      - REDIS_NODES=redis-node-1:6379,redis-node-2:6379,redis-node-3:6379,redis-node-4:6379,redis-node-5:6379,redis-node-6:6379
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      redis-cluster-creator:
+        condition: service_completed_successfully
+
+networks:
+  docker-network:
+    driver: bridge
