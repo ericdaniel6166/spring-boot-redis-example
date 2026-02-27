@@ -143,7 +143,7 @@ public class RankingService {
     }
 
     /**
-     * PERSISTENCE (PostgreSQL Upsert): Batch updates DB using virtual-thread safe JDBC.
+     * PERSISTENCE (Upsert): Batch updates DB using virtual-thread safe JDBC.
      */
     @Transactional
     public void syncToDb(LeaderboardType type, int version) {
@@ -169,7 +169,7 @@ public class RankingService {
 
     /**
      * REHYDRATION (DB -> Redis): Uses a temp key to prevent "Blank Leaderboard" syndrome.
-     * We load data into a hidden key first, then use Redis RENAME (O(1)) to swap it instantly.
+     * We load data into a hidden key first, then use Redis RENAME to swap it instantly.
      */
     public void rehydrateFromDb(LeaderboardType type, int version) {
         String key = resolveKey(type, version);

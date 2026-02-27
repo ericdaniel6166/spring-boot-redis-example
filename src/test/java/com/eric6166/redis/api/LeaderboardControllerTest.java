@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest({LeaderboardController.class, GlobalExceptionHandler.class})
 class LeaderboardControllerTest {
 
-    private static final String USER = "user123";
+    private static final String USERNAME = "user123";
     @Autowired
     private MockMvc mockMvc;
 
@@ -42,12 +42,12 @@ class LeaderboardControllerTest {
 
     @BeforeEach
     void setUp() {
-        sampleUser = new UserProfileResponse(USER, 1500.0, 1L, "http://avatar.url", "team-alpha");
+        sampleUser = new UserProfileResponse(USERNAME, 1500.0, 1L, "http://avatar.url", "team-alpha");
     }
 
     @Test
     void updateScore_Success() throws Exception {
-        UpdateScoreRequest request = new UpdateScoreRequest(USER, 50.0, 3);
+        UpdateScoreRequest request = new UpdateScoreRequest(USERNAME, 50.0, 3);
 
         mockMvc.perform(post("/leaderboard/score").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request))).andExpect(status().isOk());
 
@@ -59,30 +59,30 @@ class LeaderboardControllerTest {
         when(rankingService.getLeaderboard(eq(LeaderboardType.DAILY), eq(1), eq(0), eq(10))).thenReturn(List.of(sampleUser));
 
         String type = LeaderboardType.DAILY.name();
-        mockMvc.perform(get("/leaderboard/" + type).param("page", "0")).andExpect(status().isOk()).andExpect(jsonPath("$[0].userId").value(USER));
+        mockMvc.perform(get("/leaderboard/" + type).param("page", "0")).andExpect(status().isOk()).andExpect(jsonPath("$[0].userId").value(USERNAME));
     }
 
     @Test
     void search_Success() throws Exception {
-        when(rankingService.getNeighborhood(eq(LeaderboardType.DAILY), eq(1), eq(USER), eq(5))).thenReturn(List.of(sampleUser));
+        when(rankingService.getNeighborhood(eq(LeaderboardType.DAILY), eq(1), eq(USERNAME), eq(5))).thenReturn(List.of(sampleUser));
 
         String type = LeaderboardType.DAILY.name();
-        mockMvc.perform(get("/leaderboard/" + type + "/search").param("userId", USER).param("radius", "5")).andExpect(status().isOk()).andExpect(jsonPath("$[0].userId").value(USER));
+        mockMvc.perform(get("/leaderboard/" + type + "/search").param("userId", USERNAME).param("radius", "5")).andExpect(status().isOk()).andExpect(jsonPath("$[0].userId").value(USERNAME));
     }
 
     @Test
     void updateProfile_Success() throws Exception {
         UpdateProfileRequest request = new UpdateProfileRequest("new.png", "team-A");
 
-        mockMvc.perform(put("/leaderboard/profiles/" + USER).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request))).andExpect(status().isOk());
+        mockMvc.perform(put("/leaderboard/profiles/" + USERNAME).contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request))).andExpect(status().isOk());
 
-        verify(rankingService).updateProfile(eq(USER), any(UpdateProfileRequest.class));
+        verify(rankingService).updateProfile(eq(USERNAME), any(UpdateProfileRequest.class));
     }
 
     @Test
     void search_InvalidRadius_ReturnsBadRequest() throws Exception {
         // Radius has @Max(20) constraint in the Controller
         String type = LeaderboardType.DAILY.name();
-        mockMvc.perform(get("/leaderboard/" + type + "/search").param("userId", USER).param("radius", "50")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/leaderboard/" + type + "/search").param("userId", USERNAME).param("radius", "50")).andExpect(status().isBadRequest());
     }
 }
