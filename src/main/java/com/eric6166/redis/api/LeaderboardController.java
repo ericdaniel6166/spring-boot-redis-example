@@ -31,7 +31,7 @@ public class LeaderboardController {
     @GetMapping("/{type}")
     public List<UserProfileResponse> getBoard(
             @PathVariable LeaderboardType type,
-            @RequestParam(defaultValue = "0") int page) {
+            @Min(0) @RequestParam(defaultValue = "0") int page) {
         return rankingService.getLeaderboard(type, 1, page, 10);
     }
 
