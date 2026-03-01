@@ -5,6 +5,7 @@ import com.eric6166.redis.dto.UpdateProfileRequest;
 import com.eric6166.redis.dto.UpdateScoreRequest;
 import com.eric6166.redis.dto.UserProfileResponse;
 import com.eric6166.redis.service.RankingService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -24,7 +25,7 @@ public class LeaderboardController {
 
     @PostMapping("/score")
     public void updateScore(
-            @Valid @RequestBody UpdateScoreRequest request) {
+            @Valid @RequestBody UpdateScoreRequest request) throws JsonProcessingException {
         rankingService.recordActivity(request, 1);
     }
 

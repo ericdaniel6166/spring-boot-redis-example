@@ -1,6 +1,8 @@
 package com.eric6166.redis.service;
 
 import com.eric6166.redis.dto.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.validation.Valid;
@@ -30,6 +32,7 @@ public class RankingService {
     private static final String PROFILE_HASH_KEY = "user_profiles";
     private final StringRedisTemplate redisTemplate;
     private final JdbcTemplate jdbcTemplate;
+    private final ObjectMapper objectMapper;
     // L1 Cache: Absorbs spike, Prevents "Cache Stampede" by caching Top 10 for 10 seconds (Page 0)
     private final Cache<String, List<UserProfileResponse>> l1Cache = Caffeine.newBuilder().maximumSize(500).expireAfterWrite(10, TimeUnit.SECONDS).build();
 
@@ -43,7 +46,7 @@ public class RankingService {
     /**
      * ATOMIC UPDATE: Increments score and broadcasts "Dethrone" events if Top N changes.
      */
-    public void recordActivity(@Valid UpdateScoreRequest request, int version) {
+    public void recordActivity(@Valid UpdateScoreRequest request, int version) throws JsonProcessingException {
         for (LeaderboardType type : LeaderboardType.values()) {
             String key = resolveKey(type, version);
 
@@ -225,14 +228,15 @@ public class RankingService {
         });
     }
 
-    private void notifyDisplacedUser(String key, LeaderboardType type, int threshold) {
+    private void notifyDisplacedUser(String key, LeaderboardType type, int threshold) throws JsonProcessingException {
         Set<String> victim = redisTemplate.opsForZSet().reverseRange(key, threshold, threshold);
         if (victim != null && !victim.isEmpty()) {
             String victimId = victim.iterator().next();
-            DethroneEvent message = new DethroneEvent(victimId, type, (long) threshold + 1, DethroneEvent.DEFAULT_MESSAGE);
-            log.debug(message.toString());
-            redisTemplate.convertAndSend(NOTIFY_CHANNEL, message.toString());
+            String dethroneEventMessage = objectMapper.writeValueAsString(new DethroneEvent(victimId, type, (long) threshold + 1, DethroneEvent.DEFAULT_MESSAGE));
+            log.debug(dethroneEventMessage);
+            redisTemplate.convertAndSend(NOTIFY_CHANNEL, dethroneEventMessage);
         }
     }
+
 
 }

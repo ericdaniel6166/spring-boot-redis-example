@@ -1,9 +1,8 @@
 package com.eric6166.redis.service;
 
-import com.eric6166.redis.dto.LeaderboardType;
-import com.eric6166.redis.dto.UpdateProfileRequest;
-import com.eric6166.redis.dto.UpdateScoreRequest;
-import com.eric6166.redis.dto.UserProfileResponse;
+import com.eric6166.redis.dto.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.RandomUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,8 +31,9 @@ import static org.mockito.Mockito.*;
 class RankingServiceTest {
 
     private static final String USER_ID = UUID.randomUUID().toString();
-    private static final int VERSION = RandomUtils.nextInt(1, 10);
+    private static final int VERSION = RandomUtils.insecure().randomInt(1, 10);
     private static final String KEY_ALL_TIME_VERSION = "{" + LeaderboardType.ALL_TIME.toSlug() + "}:v" + VERSION;
+    private static ObjectMapper mapper;
     @Mock
     private StringRedisTemplate redisTemplate;
     @Mock
@@ -42,6 +42,8 @@ class RankingServiceTest {
     private ZSetOperations<String, String> zSetOperations;
     @Mock
     private HashOperations<String, Object, Object> hashOperations;
+    @Mock
+    private ObjectMapper objectMapper;
     @InjectMocks
     private RankingService rankingService;
 
@@ -50,6 +52,7 @@ class RankingServiceTest {
         // Common mock setup for ZSet operations
         lenient().when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
         lenient().when(redisTemplate.opsForHash()).thenReturn(hashOperations);
+        mapper = new ObjectMapper();
     }
 
     @Test
@@ -147,7 +150,7 @@ class RankingServiceTest {
 
     @Test
     @DisplayName("recordActivity should handle null ranks and skip notifications")
-    void recordActivity_NoDisplacement() {
+    void recordActivity_NoDisplacement() throws JsonProcessingException {
         UpdateScoreRequest request = new UpdateScoreRequest(USER_ID, 10.0, 10);
 
         // User stays at rank 15 (no displacement)
@@ -184,8 +187,9 @@ class RankingServiceTest {
 
     @Test
     @DisplayName("RecordActivity should increment score and trigger notification on displacement")
-    void recordActivity() {
-        UpdateScoreRequest request = new UpdateScoreRequest(USER_ID, 10.0, 10);
+    void recordActivity() throws JsonProcessingException {
+        long thresholdTop10 = 10;
+        UpdateScoreRequest request = new UpdateScoreRequest(USER_ID, 10.0, (int) thresholdTop10);
 
         // Mock old rank (out of top 10) and new rank (into top 10)
         when(zSetOperations.reverseRank(anyString(), eq(USER_ID))).thenReturn(15L, 5L);
@@ -193,6 +197,8 @@ class RankingServiceTest {
         // Mock the displacement victim check
         Set<String> victims = Collections.singleton("displaced-user");
         when(zSetOperations.reverseRange(anyString(), eq(10L), eq(10L))).thenReturn(victims);
+        DethroneEvent dethroneEvent = new DethroneEvent(USER_ID, LeaderboardType.ALL_TIME, thresholdTop10 + RandomUtils.insecure().randomInt(1, 10), DethroneEvent.DEFAULT_MESSAGE);
+        when(objectMapper.writeValueAsString(any(DethroneEvent.class))).thenReturn(mapper.writeValueAsString(dethroneEvent));
 
         rankingService.recordActivity(request, VERSION);
 
